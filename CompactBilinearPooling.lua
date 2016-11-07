@@ -5,7 +5,6 @@ require 'spectralnet'
 function CompactBilinearPooling:__init(outputSize)
     assert(outputSize and outputSize >= 1, 'missing outputSize!')
     self.outputSize = outputSize
-    self.sum_pool = true
     self:reset()
 end
 
@@ -92,10 +91,8 @@ function CompactBilinearPooling:updateOutput(input)
     
     local output_flat = self:conv(self.psi[1], self.psi[2])
     self.output = output_flat:reshape(self.batchSize, self.height, self.width, self.outputSize)
-        
-    if self.sum_pool then
-        self.output:sum(2):sum(3):squeeze()
-    end
+
+    self.output = self.output:sum(2):sum(3):squeeze()
     
     return self.output
 end

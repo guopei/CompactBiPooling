@@ -98,7 +98,7 @@ function CompactBilinearPooling:updateOutput(input)
 end
 
 function CompactBilinearPooling:updateGradInput(input, gradOutput)
-    local batchSize = self.input[1]:size(1)
+    local batchSize = self.inputFlatPermute[1]:size(1)
     self.gradInput = self.gradInput or {}
 
     for k=1, #self.input do
@@ -106,8 +106,10 @@ function CompactBilinearPooling:updateGradInput(input, gradOutput)
         self.gradInputFlatPermute[k]:resizeAs(self.inputFlatPermute[k]):zero()
         self.convBuf = self.convBuf or gradOutput.new()
         self.convBuf:resizeAs(gradOutput)
+        
+        self.gradOutputRepeat = gradOutput:view(self.batchSize,1,1,self.outputSize):repeatTensor(1,self.height,self.width, 1):view(-1, self.outputSize):contiguous()
 
-        self.convBuf = self:conv(gradOutput, self.psi[k%2+1]) -- need more thought
+        self.convBuf = self:conv(self.gradOutputRepeat, self.psi[k%2+1])
         if k==1 then
             self.gradInputFlatPermute[k]:index(self.convBuf, 2, self.rand_h_1)
             self.gradInputFlatPermute[k]:cmul(self.rand_s_1:repeatTensor(batchSize,1))

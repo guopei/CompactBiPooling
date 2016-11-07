@@ -91,9 +91,7 @@ function CompactBilinearPooling:updateOutput(input)
     self:psiFunc()
     
     local output_flat = self:conv(self.psi[1], self.psi[2])
-    output_shape = self.input[1]:size()
-    output_shape[4] = self.outputSize
-    self.output = output_flat:reshape(output_shape)
+    self.output = output_flat:reshape(self.batchSize, self.height, self.width, self.outputSize)
         
     if self.sum_pool then
         self.output:sum(2):sum(3):squeeze()

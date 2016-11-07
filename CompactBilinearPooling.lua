@@ -83,7 +83,7 @@ function CompactBilinearPooling:updateOutput(input)
 
     for i = 1, #self.input do
         local input_permute = self.input[i]:permute(1,3,4,2):contiguous()
-        self.inputFlatPermute[i] = input_permute.view(-1, input_permute:size(input_permute:dim()))
+        self.inputFlatPermute[i] = input_permute:view(-1, input_permute:size(input_permute:dim()))
     end
    
     self.flatBatchSize = self.inputFlatPermute[1]:size(1)

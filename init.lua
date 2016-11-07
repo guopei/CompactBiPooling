@@ -7,7 +7,7 @@ cbp.version = 1
 unpack = unpack or table.unpack
 
 -- for testing:
-torch.include('cbp', 'test.lua')
+-- torch.include('cbp', 'test.lua')
 
 -- support modules
 torch.include('cbp', 'CompactBilinearPooling.lua')

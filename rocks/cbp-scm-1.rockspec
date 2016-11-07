@@ -1,10 +1,10 @@
 package = "cbp"
 version = "scm-1"
 
---source = {
---   url = "git://github.com/jnhwkim/cbp",
---   tag = "master"
--- }
+source = {
+   url = "git://github.com/guopei/CompactBilinearPooling",
+   tag = "master"
+ }
 
 description = {
    summary = "Compact Bilinear Pooling for Torch7 nn",

@@ -3,7 +3,7 @@ local CompactBilinearPooling, parent = torch.class('nn.CompactBilinearPooling', 
 require 'spectralnet'
 
 function CompactBilinearPooling:__init(outputSize)
-    assert(outputSize and outputSize >= 1, 'outputSize(>1) should be specified')
+    assert(outputSize and outputSize >= 1, 'missing outputSize!')
     self.outputSize = outputSize
     self.sum_pool = true
     self:reset()
@@ -39,8 +39,8 @@ in "Compact Bilinear Pooling" paper.
 ]]--
 function CompactBilinearPooling:psiFunc()
    self.psi:zero()
-          self.psi[1]:indexAdd(2,self.rand_h_1,torch.cmul(self.rand_s_1:repeatTensor(self.inputFlatPermute[1]:size(1),1),self.inputFlatPermute[1]))
-    self.psi[2]:indexAdd(2,self.rand_h_2,torch.cmul(self.rand_s_2:repeatTensor(self.inputFlatPermute[2]:size(1),1),self.inputFlatPermute[2]))
+   self.psi[1]:indexAdd(2,self.rand_h_1,torch.cmul(self.rand_s_1:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[1]))
+   self.psi[2]:indexAdd(2,self.rand_h_2,torch.cmul(self.rand_s_2:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[2]))
 end
 
 function CompactBilinearPooling:conv(x,y)
@@ -66,34 +66,32 @@ function CompactBilinearPooling:conv(x,y)
 end
 
 function CompactBilinearPooling:updateOutput(input)
-    -- input size: batch, channel, height, width
-    -- two input should match in every dimension except channel.
-    assert(#input == 2, 'input must be a pair of tensors')
-    assert(input[1]:dim() == 4 and input[2]:dim() == 4, 'input must be 4D tensors')
-    for d in #input[1]:dim() do
-        if d ~= 2 then
-            assert(input[1]:size(d) == input[2]:size(d), 'dimension %d shoud match'.format(d))
-        end
-    end
-    
+    self.input = input
+    local inputSizes_1 = self.input[1]:size()
+    local inputSizes_2 = self.input[2]:size()
+    self.batchSize = inputSizes_1[1]
+    self.height = inputSizes_1[3]
+    self.width = inputSizes_1[4]
+
     if 0==#self.rand_h_1:size() then
-        self.rand_h_1:resize(input[1]:size(2))
-        self.rand_h_2:resize(input[2]:size(2))
-        self.rand_s_1:resize(input[1]:size(2))
-        self.rand_s_2:resize(input[2]:size(2))
+        self.rand_h_1:resize(inputSizes_1[2])
+        self.rand_h_2:resize(inputSizes_2[2])
+        self.rand_s_1:resize(inputSizes_1[2])
+        self.rand_s_2:resize(inputSizes_2[2])
         self:sample()  -- samples are fixed
     end
 
-    for i = 1, 2 do
+    for i = 1, #self.input do
         local input_permute = self.input[i]:permute(1,3,4,2):contiguous()
         self.inputFlatPermute[i] = input_permute.view(-1, input_permute:size(input_permute:dim()))
     end
    
-    self.psi:resize(2, self.inputFlatPermute[1]:size(1), self.outputSize)
+    self.flatBatchSize = self.inputFlatPermute[1]:size(1)
+    self.psi:resize(2, self.flatBatchSize, self.outputSize)
     self:psiFunc()
     
     local output_flat = self:conv(self.psi[1], self.psi[2])
-    output_shape = input[1]:size()
+    output_shape = self.input[1]:size()
     output_shape[4] = self.outputSize
     self.output = output_flat:reshape(output_shape)
         
@@ -105,19 +103,16 @@ function CompactBilinearPooling:updateOutput(input)
 end
 
 function CompactBilinearPooling:updateGradInput(input, gradOutput)
-    local batchSize = input[1]:size(1)
-    local height = input[1]:size(3)
-    local width = input[1]:size(4)
+    local batchSize = self.input[1]:size(1)
     self.gradInput = self.gradInput or {}
-    self.gradOutFlatPermute = gradOutput:view(batchSize, 1, 1, self.outputSize):repeatTensor(1, height, width, 1)
 
-    for k=1, 2 do
+    for k=1, #self.input do
         self.gradInputFlatPermute[k] = self.gradInputFlatPermute[k] or self.inputFlatPermute[k].new()
         self.gradInputFlatPermute[k]:resizeAs(self.inputFlatPermute[k]):zero()
-        self.convBuf = self.convBuf or self.gradOutFlatPermute.new()
-        self.convBuf:resizeAs(self.gradOutFlatPermute)
+        self.convBuf = self.convBuf or gradOutput.new()
+        self.convBuf:resizeAs(gradOutput)
 
-        self.convBuf = self:conv(self.gradOutFlatPermute, self.psi[k%2+1]) -- need more thought
+        self.convBuf = self:conv(gradOutput, self.psi[k%2+1]) -- need more thought
         if k==1 then
             self.gradInputFlatPermute[k]:index(self.convBuf, 2, self.rand_h_1)
             self.gradInputFlatPermute[k]:cmul(self.rand_s_1:repeatTensor(batchSize,1))
@@ -128,8 +123,8 @@ function CompactBilinearPooling:updateGradInput(input, gradOutput)
     end
    
    
-    for i = 1, 2 do
-        local gradInputView = self.gradInputFlatPermute[i]:view(batchSize, height, width, -1)
+    for i = 1, #self.input do
+        local gradInputView = self.gradInputFlatPermute[i]:view(self.batchSize, self.height, self.width, -1)
         self.gradInput[i] = gradInputView:permute(1,4,2,3):contiguous()
     end
 

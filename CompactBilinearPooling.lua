@@ -27,11 +27,10 @@ This is only done once during graph construction, and fixed during each
 operation
 ]]--
 function CompactBilinearPooling:sample()
-   torch.manualSeed(0)
-   self.rand_h_1:random(self.outputSize)
-   self.rand_h_2:random(self.outputSize)
-   self.rand_s_1:random(0, 1):mul(2):add(-1)
-   self.rand_s_2:random(0, 1):mul(2):add(-1)
+   self.rand_h_1:uniform(0,self.outputSize):ceil()
+   self.rand_h_2:uniform(0,self.outputSize):ceil()
+   self.rand_s_1:uniform(0,2):floor():mul(2):add(-1)
+   self.rand_s_2:uniform(0,2):floor():mul(2):add(-1)
 end
 
 --[[

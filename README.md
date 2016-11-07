@@ -19,3 +19,5 @@ luarocks make rocks/cbp-scm-1.rockspec
 
 ### License
 BSD 3-Clause
+=======
+# CompactBilinearPooling

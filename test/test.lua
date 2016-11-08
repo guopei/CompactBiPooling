@@ -80,10 +80,8 @@ function cbptest.testForward()
     
 end
 
-function cbp.test(tests, _debug)
-   debug = _debug or false
-   mytester = torch.Tester()
-   mytester:add(cbptest)
-   math.randomseed(os.time())
-   mytester:run(tests)
-end
+mytester = torch.Tester()
+mytester:add(cbptest)
+math.randomseed(os.time())
+mytester:run(tests)
+

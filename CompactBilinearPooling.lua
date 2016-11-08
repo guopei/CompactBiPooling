@@ -63,16 +63,16 @@ end
 
 function CompactBilinearPooling:updateOutput(input)
     -- check two inputs
-    assert(#input == 2, "expect 2 inputs, get %d instead.".format(#input))
+    assert(#input == 2, string.format("expect 2 inputs, get %d instead.", #input))
     -- check 4D inputs
     for i = 1, #input do
-        assert(input[i]:dim() == 4, "expect 4D input Tensor, get %dD instead for input %d.".format(input[i]:dim(), i))
+        assert(input[i]:dim() == 4, string.format("expect 4D input Tensor, get %dD instead for input %d.", input[i]:dim(), i))
     end
     -- check shape match for dimension 1, 3, 4
     for i = 1, input[1]:dim() do
         if i ~= 2 then
             assert(input[1]:size(i) == input[2]:size(i), 
-                "dimension %d size mismatch, %d vs %d.".format(i, input[1]:size(i), input[2]:size(i)))
+                string.format("dimension %d size mismatch, %d vs %d.", i, input[1]:size(i), input[2]:size(i)))
         end
     end
     self.batchSize = input[1]:size(1)

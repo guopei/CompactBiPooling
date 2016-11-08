@@ -2,7 +2,7 @@ package = "cbp"
 version = "scm-1"
 
 source = {
-   url = "git://github.com/guopei/CompactBilinearPooling",
+   url = "https://github.com/guopei/CompactBilinearPooling",
    tag = "master"
  }
 

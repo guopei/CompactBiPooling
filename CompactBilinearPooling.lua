@@ -89,12 +89,12 @@ function CompactBilinearPooling:updateOutput(input)
     -- convert the input from 4D to 2D and expose dimension 2 outside. 
     for i = 1, #input do
         local input_permute      = input[i]:permute(1,3,4,2):contiguous()
-        self.inputFlatPermute[i] = input_permute:view(-1, input_permute:size(input_permute:dim()))
+        self.inputFlatPermute[i] = input_permute:view(-1, input[i]:size(2))
     end
     -- step 2 in algorithm 2.
     self.flatBatchSize = self.inputFlatPermute[1]:size(1)
     self.psi:resize(2, self.flatBatchSize, self.outputSize)
-    self:psiFunc()
+    self.psiFunc()
     -- step 3 in algorithm 2.
     local output_flat = self:conv(self.psi[1], self.psi[2])
     -- reshape output and sum pooling over dimension 2 and 3.

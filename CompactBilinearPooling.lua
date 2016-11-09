@@ -33,10 +33,9 @@ end
 -- according to "Algorithm 2 Tensor Sketch Projection" step 2.
 function CompactBilinearPooling:psiFunc()
    self.psi:zero()
-   self.psi[1]:indexAdd(2,self.rand_h_1,torch.cmul(self.rand_s_1:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[1]))
-   self.psi[2]:indexAdd(2,self.rand_h_2,torch.cmul(self.rand_s_2:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[2]))
-   self.tmp11 = torch.cmul(self.rand_s_1:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[1]):sum()
-   self.tmp12 = torch.cmul(self.rand_s_2:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[2]):sum()
+   for i in 1, 2 do
+    self.psi[i]:indexAdd(2,self.rand_h_1,torch.cmul(self.rand_s_1:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[i]))
+   end
 end
 
 -- compute phi(x).

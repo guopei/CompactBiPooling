@@ -1,3 +1,5 @@
 
 build
 sftp-config.json
+.*
+*.ipynb

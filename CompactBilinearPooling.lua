@@ -33,7 +33,7 @@ end
 -- according to "Algorithm 2 Tensor Sketch Projection" step 2.
 function CompactBilinearPooling:psiFunc()
    self.psi:zero()
-   for i in 1, 2 do
+   for i = 1, 2 do
     self.psi[i]:indexAdd(2,self.rand_h_1,torch.cmul(self.rand_s_1:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[i]))
    end
 end

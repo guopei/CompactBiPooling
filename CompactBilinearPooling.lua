@@ -97,9 +97,9 @@ function CompactBilinearPooling:updateOutput(input)
     self.psi:resize(2, self.flatBatchSize, self.outputSize)
     self:psiFunc()
     -- step 3 in algorithm 2.
-    local output_flat = self:conv(self.psi[1], self.psi[2])
+    self.output_flat = self:conv(self.psi[1], self.psi[2])
     -- reshape output and sum pooling over dimension 2 and 3.
-    self.output       = output_flat:reshape(self.batchSize, self.height, self.width, self.outputSize)
+    self.output       = self.output_flat:reshape(self.batchSize, self.height, self.width, self.outputSize)
     self.output       = self.output:sum(2):sum(3):squeeze()
     
     return self.output

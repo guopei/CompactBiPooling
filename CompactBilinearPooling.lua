@@ -94,7 +94,7 @@ function CompactBilinearPooling:updateOutput(input)
     -- step 2 in algorithm 2.
     self.flatBatchSize = self.inputFlatPermute[1]:size(1)
     self.psi:resize(2, self.flatBatchSize, self.outputSize)
-    self.psiFunc()
+    self:psiFunc()
     -- step 3 in algorithm 2.
     local output_flat = self:conv(self.psi[1], self.psi[2])
     -- reshape output and sum pooling over dimension 2 and 3.

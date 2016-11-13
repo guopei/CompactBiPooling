@@ -2,9 +2,10 @@ local CompactBilinearPooling, parent = torch.class('nn.CompactBilinearPooling', 
 
 require 'spectralnet'
 
-function CompactBilinearPooling:__init(outputSize)
+function CompactBilinearPooling:__init(outputSize, homo)
     assert(outputSize and outputSize >= 1, 'missing outputSize!')
-    self.outputSize = outputSize
+    self.outputSize = outputSize 
+    self.homo = homo or false
     self:reset()
 end
 
@@ -33,9 +34,17 @@ end
 -- according to "Algorithm 2 Tensor Sketch Projection" step 2.
 function CompactBilinearPooling:psiFunc()
     self.psi:zero()
-    self.psi[1]:indexAdd(2,self.rand_h_1,torch.cmul(self.rand_s_1:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[1]))
-    self.psi[2]:indexAdd(2,self.rand_h_1,torch.cmul(self.rand_s_1:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[2]))
-
+    if self.homo then           
+        self.psi[1]:indexAdd(2,self.rand_h_1,
+            torch.cmul(self.rand_s_1:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[1]))
+        self.psi[2]:indexAdd(2,self.rand_h_1,
+            torch.cmul(self.rand_s_1:repeatTensor(self.flatBatchSize,1), self.inputFlatPermute[2]))
+    else
+        self.psi[1]:indexAdd(2,self.rand_h_1,
+            torch.cmul(self.rand_s_1:repeatTensor(self.flatBatchSize,1),self.inputFlatPermute[1]))
+        self.psi[2]:indexAdd(2,self.rand_h_2,
+            torch.cmul(self.rand_s_2:repeatTensor(self.flatBatchSize,1), self.inputFlatPermute[2]))
+    end
 end
 
 -- compute phi(x).

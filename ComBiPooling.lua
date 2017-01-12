@@ -40,7 +40,7 @@ function ComBiPooling:checkInput(input)
     end
 end
 
-function CompactBilinearPooling:conv(x,y)
+function ComBiPooling:conv(x,y)
    local batchSize = x:size(1)
    local dim = x:size(2)
    local function makeComplex(x,y)

@@ -28,9 +28,9 @@ end
 
 function ComBiPooling:checkInput(input)
     assert(2 == #input, string.format("expect 2 inputs but get %d...", #input))
-    assert(4 == input[1].nDimensions() and 4 == input[2].nDimensions(), 
+    assert(4 == input[1].nDimension() and 4 == input[2].nDimension(), 
         string.format("wrong input dimensions, required (4, 4), but get (%d, %d)", 
-        input[1].nDimensions(), input[2].nDimensions()))
+        input[1].nDimension(), input[2].nDimension()))
     for dim = 1, 4 do
         if dim ~= 2 then
             assert(input[1]:size(dim) == input[2]:size(dim), 

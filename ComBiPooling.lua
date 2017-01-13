@@ -75,7 +75,7 @@ function ComBiPooling:updateOutput(input)
     -- get the outer product in explicit form and compare with the hash output.
     self.out_prod = torch.CudaTensor(input[1]:size(1), input[1]:size(3), input[1]:size(4), input[1]:size(2)*input[2]:size(2))
     for i = 1, input[1]:size(1) * input[1]:size(3) * input[1]:size(4) do
-        self.out_prod[i] = torch.ger(self.flat_input[1][i], self.flat_input[2][i]) 
+        self.out_prod[i] = torch.ger(self.flat_input[1][i], self.flat_input[2][i])
     end
     
     -- get hash input as step 2
@@ -87,7 +87,7 @@ function ComBiPooling:updateOutput(input)
     self.flat_output = self:conv(self.hash_input[1], self.hash_input[2])
     -- reshape output and sum pooling over dimension 2 and 3.
     self.output       = self.flat_output:reshape(input[1]:size(1), input[1]:size(3), input[1]:size(4), self.output_size)
-    -- self.output       = self.output:sum(2):sum(3):squeeze()
+    self.output       = self.output:sum(2):sum(3):squeeze()
     
     return self.output
 end

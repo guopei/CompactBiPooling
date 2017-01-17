@@ -1,8 +1,8 @@
 package = "cbp"
-version = "scm-1"
+version = "1.0-1"
 
 source = {
-   url = "git://github.com/guopei/CompactBilinearPooling",
+   url = "https://github.com/guopei/CompactBiPooling.git",
    tag = "master"
  }
 
@@ -11,13 +11,14 @@ description = {
    detailed = [[
 Torch7 Implementation of Compact Bilnear Pooling
    ]],
-   homepage = "https://github.com/jnhwkim/cbp",
+   homepage = "https://github.com/guopei/CompactBiPooling",
    license = "BSD-3 Clause"
 }
 
 dependencies = {
+   "nn >= 1.0",
    "torch >= 7.0",
-   "nn >= 1.0"
+   "spectralnet >= 1.0"
 }
 
 build = {

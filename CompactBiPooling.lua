@@ -41,7 +41,7 @@ function ComBiPooling:checkInput(input)
 end
 
 function ComBiPooling:fft_mul(x, y)
-    local prod = torch.zeros(x:size())
+    local prod = torch.zeros(x:size()):cuda()
     
     for i = 1, x:size(1) do
         local x1 = x[i][1][1]:select(2,1)

@@ -18,7 +18,6 @@ Torch7 Implementation of Compact Bilnear Pooling
 dependencies = {
    "nn >= 1.0",
    "torch >= 7.0",
-   "spectralnet >= 1.0"
 }
 
 build = {

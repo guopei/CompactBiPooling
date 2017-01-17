@@ -2,7 +2,7 @@ package = "cbp"
 version = "1.0-1"
 
 source = {
-   url = "git://github.com/guopei/CompactBiPooling",
+   url = "git://github.com/guopei/CompactBiPooling.git",
    tag = "master"
  }
 

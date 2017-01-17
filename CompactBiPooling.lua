@@ -40,26 +40,51 @@ function ComBiPooling:checkInput(input)
     end
 end
 
+function fft_mul(x, y)
+    local prod = torch.zeros(x:size())
+    
+    for i = 1, x:size(1) do
+        local x1 = x[i]:select(2,1)
+        local x2 = x[i]:select(2,2)
+        local y1 = y[i]:select(2,1)
+        local y2 = y[i]:select(2,2)
+    
+        local real = torch.cmul(x1, y1) - torch.cmul(x2, y2)
+        local imag = torch.cmul(x1, y2) + torch.cmul(x2, y1)
+    
+        prod[i]:copy(torch.cat(real, imag, 2))
+    end
+    
+    return prod
+end
+
 function ComBiPooling:conv(x,y)
-   local batchSize = x:size(1)
-   local dim = x:size(2)
-   local function makeComplex(x,y)
-      self.x_ = self.x_ or torch.CudaTensor()
-      self.x_:resize(x:size(1),1,1,x:size(2),2):zero()
-      self.x_[{{},{1},{1},{},{1}}]:copy(x)
-      self.y_ = self.y_ or torch.CudaTensor()
-      self.y_:resize(y:size(1),1,1,y:size(2),2):zero()
-      self.y_[{{},{1},{1},{},{1}}]:copy(y)
-   end
-   makeComplex(x,y)
-   self.fft_x = self.fft_x or torch.CudaTensor(batchSize,1,1,dim,2)
-   self.fft_y = self.fft_y or torch.CudaTensor(batchSize,1,1,dim,2)
-   local output = output or torch.CudaTensor()
-   output:resize(batchSize,1,1,dim*2)
-   cufft.fft1d(self.x_:view(x:size(1),1,1,-1), self.fft_x)
-   cufft.fft1d(self.y_:view(y:size(1),1,1,-1), self.fft_y)
-   cufft.ifft1d(self.fft_x:cmul(self.fft_y), output)
-   return output:resize(batchSize,1,1,dim,2):select(2,1):select(2,1):select(3,1)
+    local batchSize = x:size(1)
+    local dim = x:size(2)
+    local function makeComplex(x,y)
+        self.x_ = self.x_ or torch.CudaTensor()
+        self.x_:resize(x:size(1),1,1,x:size(2),2):zero()
+        self.x_[{{},{1},{1},{},{1}}]:copy(x)
+        self.y_ = self.y_ or torch.CudaTensor()
+        self.y_:resize(y:size(1),1,1,y:size(2),2):zero()
+        self.y_[{{},{1},{1},{},{1}}]:copy(y)
+    end
+    
+    makeComplex(x,y)
+    self.fft_x = self.fft_x or torch.CudaTensor(batchSize,1,1,dim,2)
+    self.fft_y = self.fft_y or torch.CudaTensor(batchSize,1,1,dim,2)
+    
+    local output = output or torch.CudaTensor()
+    output:resize(batchSize,1,1,dim*2)
+    
+    cufft.fft1d(self.x_:view(x:size(1),1,1,-1), self.fft_x)
+    cufft.fft1d(self.y_:view(y:size(1),1,1,-1), self.fft_y)
+    
+    local prod = self:fft_mul(self.fft_x, self.fft_y)
+    
+    cufft.ifft1d(prod, output)
+    
+    return output:resize(batchSize,1,1,dim,2):select(2,1):select(2,1):select(3,1)
 end
 
 function ComBiPooling:updateOutput(input)
@@ -70,12 +95,6 @@ function ComBiPooling:updateOutput(input)
     for i = 1, #input do
         local new_input       = input[i]:permute(1,3,4,2):contiguous()
         self.flat_input[i]    = new_input:view(-1, input[i]:size(2))
-    end
-    
-    -- get the outer product in explicit form and compare with the hash output.
-    self.out_prod = torch.CudaTensor(input[1]:size(1), input[1]:size(3), input[1]:size(4), input[1]:size(2)*input[2]:size(2))
-    for i = 1, input[1]:size(1) * input[1]:size(3) * input[1]:size(4) do
-        self.out_prod[i] = torch.ger(self.flat_input[1][i], self.flat_input[2][i])
     end
     
     -- get hash input as step 2

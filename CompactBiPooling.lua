@@ -44,11 +44,10 @@ function ComBiPooling:fft_mul(x, y)
     local prod = torch.zeros(x:size())
     
     for i = 1, x:size(1) do
-        print(x[i]:size())
-        local x1 = x[i]:select(1,1)
-        local x2 = x[i]:select(1,2)
-        local y1 = y[i]:select(1,1)
-        local y2 = y[i]:select(1,2)
+        local x1 = x[i][1][1]:select(2,1)
+        local x2 = x[i][1][1]:select(2,2)
+        local y1 = y[i][1][1]:select(2,1)
+        local y2 = y[i][1][1]:select(2,2)
     
         local real = torch.cmul(x1, y1) - torch.cmul(x2, y2)
         local imag = torch.cmul(x1, y2) + torch.cmul(x2, y1)

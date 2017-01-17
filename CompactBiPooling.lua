@@ -40,7 +40,7 @@ function ComBiPooling:checkInput(input)
     end
 end
 
-function fft_mul(x, y)
+function ComBiPooling:fft_mul(x, y)
     local prod = torch.zeros(x:size())
     
     for i = 1, x:size(1) do

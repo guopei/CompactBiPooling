@@ -1,4 +1,4 @@
-package = "cbp"
+package = "tcbp"
 version = "1.0-1"
 
 source = {

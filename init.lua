@@ -1,8 +1,8 @@
 require 'nn'
 
 -- create global rnn table:
-cbp = {}
-cbp.version = 1
+tcbp = {}
+tcbp.version = 1
 
 unpack = unpack or table.unpack
 
@@ -10,8 +10,8 @@ unpack = unpack or table.unpack
 -- torch.include('cbp', 'test.lua')
 
 -- support modules
-torch.include('cbp', 'CompactBiPooling.lua')
-torch.include('cbp', 'SignedSquareRoot.lua')
+torch.include('tcbp', 'CompactBiPooling.lua')
+torch.include('tcbp', 'SignedSquareRoot.lua')
 
 -- prevent likely name conflicts
-nn.cbp = cbp
+nn.tcbp = tcbp

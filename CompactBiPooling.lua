@@ -105,8 +105,8 @@ function ComBiPooling:updateOutput(input)
     -- step 3
     self.flat_output    = self:conv(self.hash_input[1], self.hash_input[2])
     -- reshape output and sum pooling over dimension 2 and 3.
-    self.output         = self.flat_output:reshape(input[1]:size(1), input[1]:size(3), input[1]:size(4), self.output_size)
-    self.output         = self.output:sum(2):sum(3):squeeze():reshape(input[1]:size(1), self.output_size)
+    self.output         = self.flat_output:reshape(input[1]:size(1), input[1]:size(3)*input[1]:size(4), self.output_size)
+    self.output         = self.output:sum(2):squeeze():reshape(input[1]:size(1), self.output_size)
     
     return self.output
 end

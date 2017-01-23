@@ -2,6 +2,8 @@ require 'spectralnet'
 
 local ComBiPooling, parent = torch.class('nn.ComBiPooling', 'nn.Module')
 
+torch.manualSeed(0)
+
 function ComBiPooling:__init(output_size)
     assert(output_size and output_size >= 1, 'missing outputSize...')
     self.output_size = output_size 

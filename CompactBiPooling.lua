@@ -23,7 +23,7 @@ function ComBiPooling:getHashInput()
     self.hash_input[1]:indexAdd(2,self.rand_h_1,
         torch.cmul(self.rand_s_1:repeatTensor(self.flat_size,1),self.flat_input[1]))
     self.hash_input[2]:indexAdd(2,self.rand_h_2,
-        torch.cmul(self.rand_s_2:repeatTensor(self.flat_size,1), self.flat_input[2]))
+        torch.cmul(self.rand_s_2:repeatTensor(self.flat_size,1),self.flat_input[2]))
 end
 
 function ComBiPooling:checkInput(input)
@@ -103,10 +103,10 @@ function ComBiPooling:updateOutput(input)
     self:getHashInput()
     
     -- step 3
-    self.flat_output = self:conv(self.hash_input[1], self.hash_input[2])
+    self.flat_output    = self:conv(self.hash_input[1], self.hash_input[2])
     -- reshape output and sum pooling over dimension 2 and 3.
-    self.output       = self.flat_output:reshape(input[1]:size(1), input[1]:size(3), input[1]:size(4), self.output_size)
-    self.output       = self.output:sum(2):sum(3):squeeze():reshape(input[1]:size(1), self.output_size)
+    self.output         = self.flat_output:reshape(input[1]:size(1), input[1]:size(3), input[1]:size(4), self.output_size)
+    self.output         = self.output:sum(2):sum(3):squeeze():reshape(input[1]:size(1), self.output_size)
     
     return self.output
 end

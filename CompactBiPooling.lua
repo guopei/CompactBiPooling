@@ -2,8 +2,6 @@ require 'spectralnet'
 
 local ComBiPooling, parent = torch.class('nn.ComBiPooling', 'nn.Module')
 
-torch.manualSeed(0)
-
 function ComBiPooling:__init(output_size)
     assert(output_size and output_size >= 1, 'missing outputSize...')
     self.output_size = output_size 
@@ -14,6 +12,7 @@ end
 -- generate random vectors h1, h2, s1, s2.
 -- according to "Algorithm 2 Tensor Sketch Projection" step 1.
 function ComBiPooling:genRand(size_1, size_2)
+    torch.manualSeed(0)
     self.rand_h_1 = torch.CudaTensor(size_1):uniform(0,self.output_size):ceil()
     self.rand_h_2 = torch.CudaTensor(size_2):uniform(0,self.output_size):ceil()
     self.rand_s_1 = torch.CudaTensor(size_1):uniform(0,2):floor():mul(2):add(-1)

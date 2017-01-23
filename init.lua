@@ -2,7 +2,7 @@ require 'nn'
 
 -- create global rnn table:
 tcbp = {}
-tcbp.version = 1
+tcbp.version = 1.0-1
 
 unpack = unpack or table.unpack
 

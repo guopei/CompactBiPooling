@@ -6,7 +6,7 @@ function ComBiPooling:__init(output_size)
     assert(output_size and output_size >= 1, 'missing outputSize...')
     self.output_size = output_size 
     self.flat_input = {}
-    self.hash_input = torch.Tensor()
+    self.hash_input = torch.CudaTensor()
 end
 
 -- generate random vectors h1, h2, s1, s2.

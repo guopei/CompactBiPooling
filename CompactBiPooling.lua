@@ -6,18 +6,16 @@ function ComBiPooling:__init(output_size)
     assert(output_size and output_size >= 1, 'missing outputSize...')
     self.output_size = output_size 
     self.flat_input = {}
-    self.hash_input = torch.CudaTensor()
+    self.hash_input = torch.Tensor()
 end
 
 -- generate random vectors h1, h2, s1, s2.
 -- according to "Algorithm 2 Tensor Sketch Projection" step 1.
 function ComBiPooling:genRand(size_1, size_2)
-    torch.manualSeed(100)
-    self.rand_h_1 = torch.Tensor(size_1):uniform(0,self.output_size):ceil():long():cuda()
-    self.rand_h_2 = torch.Tensor(size_2):uniform(0,self.output_size):ceil():long():cuda()
-    self.rand_s_1 = torch.Tensor(size_1):uniform(0,2):floor():mul(2):add(-1):cuda()
-    self.rand_s_2 = torch.Tensor(size_2):uniform(0,2):floor():mul(2):add(-1):cuda()
-    
+    self.rand_h_1 = torch.Tensor(size_1):uniform(0,self.output_size):ceil():long()
+    self.rand_h_2 = torch.Tensor(size_2):uniform(0,self.output_size):ceil():long()
+    self.rand_s_1 = torch.Tensor(size_1):uniform(0,2):floor():mul(2):add(-1)
+    self.rand_s_2 = torch.Tensor(size_2):uniform(0,2):floor():mul(2):add(-1)
 end
 
 function ComBiPooling:getHashInput()
@@ -91,7 +89,9 @@ end
 
 function ComBiPooling:updateOutput(input)
     self:checkInput(input)
-    self:genRand(input[1]:size(2), input[2]:size(2))
+    if not self.rand_h_1 then
+        self:genRand(input[1]:size(2), input[2]:size(2))
+    end
     
     -- convert the input from 4D to 2D and expose dimension 2 outside. 
     for i = 1, #input do

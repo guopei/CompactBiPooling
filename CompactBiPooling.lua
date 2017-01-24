@@ -12,7 +12,7 @@ end
 -- generate random vectors h1, h2, s1, s2.
 -- according to "Algorithm 2 Tensor Sketch Projection" step 1.
 function ComBiPooling:genRand(size_1, size_2)
-    --torch.manualSeed()
+    torch.seed()
     self.rand_h_1 = torch.Tensor(size_1):uniform(0,self.output_size):ceil():long():cuda()
     self.rand_h_2 = torch.Tensor(size_2):uniform(0,self.output_size):ceil():long():cuda()
     self.rand_s_1 = torch.Tensor(size_1):uniform(0,2):floor():mul(2):add(-1):cuda()

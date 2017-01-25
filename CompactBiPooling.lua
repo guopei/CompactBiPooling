@@ -5,17 +5,25 @@ local ComBiPooling, parent = torch.class('nn.ComBiPooling', 'nn.Module')
 function ComBiPooling:__init(output_size)
     assert(output_size and output_size >= 1, 'missing outputSize...')
     self.output_size = output_size 
-    self.flat_input = {}
+    self:initVar()
+end
+
+function CombiPooling:initVar()
+    self.flat_input = torch.Tensor()
     self.hash_input = torch.Tensor()
+    self.rand_h_1   = torch.Tensor()
+    self.rand_h_2   = torch.Tensor()
+    self.rand_s_1   = torch.Tensor()
+    self.rand_s_2   = torch.Tensor()
 end
 
 -- generate random vectors h1, h2, s1, s2.
 -- according to "Algorithm 2 Tensor Sketch Projection" step 1.
 function ComBiPooling:genRand(size_1, size_2)
-    self.rand_h_1 = torch.Tensor(size_1):uniform(0,self.output_size):ceil():long()
-    self.rand_h_2 = torch.Tensor(size_2):uniform(0,self.output_size):ceil():long()
-    self.rand_s_1 = torch.Tensor(size_1):uniform(0,2):floor():mul(2):add(-1)
-    self.rand_s_2 = torch.Tensor(size_2):uniform(0,2):floor():mul(2):add(-1)
+    self.rand_h_1:resize(size_1):uniform(0,self.output_size):ceil()
+    self.rand_h_2:resize(size_2):uniform(0,self.output_size):ceil()
+    self.rand_s_1:resize(size_1):uniform(0,2):floor():mul(2):add(-1)
+    self.rand_s_2:resize(size_2):uniform(0,2):floor():mul(2):add(-1)
 end
 
 function ComBiPooling:getHashInput()
@@ -40,7 +48,7 @@ function ComBiPooling:checkInput(input)
     end
 end
 
-function ComBiPooling:fft_mul(x, y)
+function ComBiPooling:fftMul(x, y)
     local prod = torch.zeros(x:size()):cuda()
     
     for i = 1, x:size(1) do
@@ -80,7 +88,7 @@ function ComBiPooling:conv(x,y)
     cufft.fft1d(self.x_:view(x:size(1),1,1,-1), self.fft_x)
     cufft.fft1d(self.y_:view(y:size(1),1,1,-1), self.fft_y)
     
-    local prod = self:fft_mul(self.fft_x, self.fft_y)
+    local prod = self:fftMul(self.fft_x, self.fft_y)
     
     cufft.ifft1d(prod, output)
     
@@ -89,18 +97,20 @@ end
 
 function ComBiPooling:updateOutput(input)
     self:checkInput(input)
-    if not self.rand_h_1 then
+    if 0 == #self.rand_h_1 then
         self:genRand(input[1]:size(2), input[2]:size(2))
     end
     
     -- convert the input from 4D to 2D and expose dimension 2 outside. 
+    self.flat_size = input[1]:size(1) * input[1]:size(3) * input[1]:size(4)
+    self.flat_input:resize(2, self.flat_size, input[i]:size(2))
     for i = 1, #input do
         local new_input       = input[i]:permute(1,3,4,2):contiguous()
         self.flat_input[i]    = new_input:view(-1, input[i]:size(2))
     end
     
     -- get hash input as step 2
-    self.flat_size = self.flat_input[1]:size(1)
+    
     self.hash_input:resize(2, self.flat_size, self.output_size)
     self:getHashInput()
     

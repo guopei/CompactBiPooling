@@ -8,7 +8,7 @@ function ComBiPooling:__init(output_size)
     self:initVar()
 end
 
-function CombiPooling:initVar()
+function ComBiPooling:initVar()
     self.flat_input = torch.Tensor()
     self.hash_input = torch.Tensor()
     self.rand_h_1   = torch.Tensor()
@@ -20,10 +20,10 @@ end
 -- generate random vectors h1, h2, s1, s2.
 -- according to "Algorithm 2 Tensor Sketch Projection" step 1.
 function ComBiPooling:genRand(size_1, size_2)
-    self.rand_h_1:resize(size_1):uniform(0,self.output_size):ceil()
-    self.rand_h_2:resize(size_2):uniform(0,self.output_size):ceil()
-    self.rand_s_1:resize(size_1):uniform(0,2):floor():mul(2):add(-1)
-    self.rand_s_2:resize(size_2):uniform(0,2):floor():mul(2):add(-1)
+    self.rand_h_1 = self.rand_h_1:resize(size_1):uniform(0,self.output_size):ceil():long()
+    self.rand_h_2 = self.rand_h_2:resize(size_2):uniform(0,self.output_size):ceil():long()
+    self.rand_s_1 = self.rand_s_1:resize(size_1):uniform(0,2):floor():mul(2):add(-1)
+    self.rand_s_2 = self.rand_s_2:resize(size_2):uniform(0,2):floor():mul(2):add(-1)
 end
 
 function ComBiPooling:getHashInput()
@@ -97,13 +97,13 @@ end
 
 function ComBiPooling:updateOutput(input)
     self:checkInput(input)
-    if 0 == #self.rand_h_1 then
+    if 0 == self.rand_h_1:nElement() then
         self:genRand(input[1]:size(2), input[2]:size(2))
     end
     
     -- convert the input from 4D to 2D and expose dimension 2 outside. 
     self.flat_size = input[1]:size(1) * input[1]:size(3) * input[1]:size(4)
-    self.flat_input:resize(2, self.flat_size, input[i]:size(2))
+    self.flat_input:resize(2, self.flat_size, input[1]:size(2))
     for i = 1, #input do
         local new_input       = input[i]:permute(1,3,4,2):contiguous()
         self.flat_input[i]    = new_input:view(-1, input[i]:size(2))
@@ -121,4 +121,28 @@ function ComBiPooling:updateOutput(input)
     self.output         = self.output:sum(2):squeeze():reshape(input[1]:size(1), self.output_size)
     
     return self.output
+end
+
+function ComBiPooling:updateGradInput(input, gradOutput)
+    local dim = input[1]:size(2)
+    local batchSize = input[1]:size(1)
+    self.gradInput = self.gradInput or {}
+
+    for k=1,2 do
+        self.gradInput[k] = self.gradInput[k] or input[k].new()
+        self.gradInput[k]:resizeAs(input[k]):zero()
+        self.tmp = self.tmp or gradOutput.new()
+        self.tmp:resizeAs(gradOutput)
+
+        self.tmp = self:conv(gradOutput, self.y[k%2+1])
+        if k==1 then
+            self.gradInput[k]:index(self.tmp, 2, self.h1)
+            self.gradInput[k]:cmul(self.s1:repeatTensor(batchSize,1))
+        else
+            self.gradInput[k]:index(self.tmp, 2, self.h2)
+            self.gradInput[k]:cmul(self.s2:repeatTensor(batchSize,1))
+        end
+    end
+
+    return self.gradInput
 end

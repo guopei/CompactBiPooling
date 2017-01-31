@@ -1,4 +1,5 @@
 require 'nn'
+require 'libcudafft'
 
 -- create global rnn table:
 tcbp = {}

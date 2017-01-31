@@ -1,10 +1,12 @@
-require 'spectralnet'
+-- loading C library
+require 'libcudafft'
 
 local ComBiPooling, parent = torch.class('nn.ComBiPooling', 'nn.Module')
 
-function ComBiPooling:__init(output_size)
+function ComBiPooling:__init(output_size, homo)
     assert(output_size and output_size >= 1, 'missing outputSize...')
-    self.output_size = output_size 
+    self.output_size = output_size
+    self.homo        = homo or false
     self:initVar()
 end
 
@@ -35,15 +37,25 @@ function ComBiPooling:getHashInput()
 end
 
 function ComBiPooling:checkInput(input)
-    assert(2 == #input, string.format("expect 2 inputs but get %d...", #input))
-    assert(4 == input[1]:nDimension() and 4 == input[2]:nDimension(), 
-        string.format("wrong input dimensions, required (4, 4), but get (%d, %d)", 
-        input[1]:nDimension(), input[2]:nDimension()))
-    for dim = 1, 4 do
-        if dim ~= 2 then
-            assert(input[1]:size(dim) == input[2]:size(dim), 
-                string.format("input size mismatch, dim %d: %d vs %d", 
-                dim, input[1]:size(dim), input[2]:size(dim)))
+    if self.homo then
+        -- if only one input
+        assert(1 == #input, string.format("expect 1 input but get %d...", #input))
+        assert(4 == input[1]:nDimension(), 
+            string.format("wrong input dimensions, required 4, but get %d", 
+            input[1]:nDimension()))
+    else
+        -- if there are two inputs, #dim and size of each dim is examined.
+        assert(2 == #input, string.format("expect 2 inputs but get %d...", #input))
+        assert(4 == input[1]:nDimension() and 4 == input[2]:nDimension(), 
+            string.format("wrong input dimensions, required (4, 4), but get (%d, %d)", 
+            input[1]:nDimension(), input[2]:nDimension()))
+        
+        for dim = 1, 4 do
+            if dim ~= 2 then
+                assert(input[1]:size(dim) == input[2]:size(dim), 
+                    string.format("input size mismatch, dim %d: %d vs %d", 
+                    dim, input[1]:size(dim), input[2]:size(dim)))
+            end
         end
     end
 end
@@ -66,6 +78,33 @@ function ComBiPooling:fftMul(x, y)
     return prod
 end
 
+function ComBiPooling:fft1d(input, output)
+    local nSamples = input:size(1)
+    local nPlanes = input:size(2)
+    local N = input:size(3)
+    local M = input:size(4)
+    input:resize(nSamples*nPlanes*N, M)
+    output:resize(nSamples*nPlanes*N, M/2+1, 2)
+    -- calling C function
+    cudafft.fft1d_r2c(input, output)
+    input:resize(nSamples, nPlanes, N, M)
+    output:resize(nSamples, nPlanes, N, M/2+1, 2)
+end
+
+function ComBiPooling:ifft1d(input, output)
+    local nSamples = output:size(1)
+    local nPlanes = output:size(2)
+    local N = output:size(3)
+    local M = output:size(4)
+    input:resize(nSamples*nPlanes*N, M/2+1, 2)
+    output:resize(nSamples*nPlanes*N, M)
+    -- calling C function
+    cudafft.fft1d_c2r(input,output)
+    output:div(M)
+    input:resize(nSamples, nPlanes, N, M/2+1, 2)
+    output:resize(nSamples, nPlanes, N, M)
+end
+
 function ComBiPooling:conv(x,y)
     local batchSize = x:size(1)
     local dim = x:size(2)
@@ -85,63 +124,71 @@ function ComBiPooling:conv(x,y)
     local output = output or torch.CudaTensor()
     output:resize(batchSize,1,1,dim*2)
     
-    cufft.fft1d(self.x_:view(x:size(1),1,1,-1), self.fft_x)
-    cufft.fft1d(self.y_:view(y:size(1),1,1,-1), self.fft_y)
+    self:fft1d(self.x_:view(x:size(1),1,1,-1), self.fft_x)
+    self:fft1d(self.y_:view(y:size(1),1,1,-1), self.fft_y)
     
     local prod = self:fftMul(self.fft_x, self.fft_y)
     
-    cufft.ifft1d(prod, output)
+    self:ifft1d(prod, output)
     
     return output:resize(batchSize,1,1,dim,2):select(2,1):select(2,1):select(3,1)
 end
 
 function ComBiPooling:updateOutput(input)
+    
     self:checkInput(input)
+
     if 0 == self.rand_h_1:nElement() then
-        self:genRand(input[1]:size(2), input[2]:size(2))
+        if self.homo then
+            self:genRand(input[1]:size(2), input[1]:size(2))
+        else
+            self:genRand(input[1]:size(2), input[2]:size(2))
+        end
     end
     
     -- convert the input from 4D to 2D and expose dimension 2 outside. 
-    self.flat_size = input[1]:size(1) * input[1]:size(3) * input[1]:size(4)
+    self.flat_size = self.flat_size or input[1]:size(1) * input[1]:size(3) * input[1]:size(4)
     self.flat_input:resize(2, self.flat_size, input[1]:size(2))
     for i = 1, #input do
         local new_input       = input[i]:permute(1,3,4,2):contiguous()
         self.flat_input[i]    = new_input:view(-1, input[i]:size(2))
     end
     
-    -- get hash input as step 2
+    if self.homo then self.flat_input[2] = self.flat_input[1]:clone()
     
+    -- get hash input as step 2
     self.hash_input:resize(2, self.flat_size, self.output_size)
     self:getHashInput()
     
     -- step 3
     self.flat_output    = self:conv(self.hash_input[1], self.hash_input[2])
+    self.hw_size        = self.hw_size or input[1].size[3] * input[1].size[4]
+    self.batch_size     = self.batch_size or input[1].size[1]
     -- reshape output and sum pooling over dimension 2 and 3.
-    self.output         = self.flat_output:reshape(input[1]:size(1), input[1]:size(3)*input[1]:size(4), self.output_size)
+    self.output         = self.flat_output:reshape(self.batch_size, self.hw_size, self.output_size)
     self.output         = self.output:sum(2):squeeze():reshape(input[1]:size(1), self.output_size)
     
     return self.output
 end
 
 function ComBiPooling:updateGradInput(input, gradOutput)
-    local dim = input[1]:size(2)
-    local batchSize = input[1]:size(1)
-    self.gradInput = self.gradInput or {}
 
-    for k=1,2 do
-        self.gradInput[k] = self.gradInput[k] or input[k].new()
-        self.gradInput[k]:resizeAs(input[k]):zero()
-        self.tmp = self.tmp or gradOutput.new()
-        self.tmp:resizeAs(gradOutput)
+    local gradInput     = gradInput or {}
+    local repeatGradOut = gradOutput:view(self.batch_size, self.output_size, 1):repeatTensor(1, 1, self.hw_size)
+    repeatGradOut       = repeatGradOut:permute(1,3,2):reshape(self.flat_size, self.output_size)
+    
+    for k=1,#input do
+        self.gradInput[k] = gradInput[k] or self.flat_input[k].new()
+        self.gradInput[k]:resizeAs(self.flat_input[k]):zero()
+        local conv_result = conv_result or repeatGradOut.new()
+        conv_result:resizeAs(repeatGradOut)
 
-        self.tmp = self:conv(gradOutput, self.y[k%2+1])
-        if k==1 then
-            self.gradInput[k]:index(self.tmp, 2, self.h1)
-            self.gradInput[k]:cmul(self.s1:repeatTensor(batchSize,1))
-        else
-            self.gradInput[k]:index(self.tmp, 2, self.h2)
-            self.gradInput[k]:cmul(self.s2:repeatTensor(batchSize,1))
-        end
+        conv_result = self:conv(repeatGradOut, self.hash_input[3-k])
+        
+        self.gradInput[k]:index(conv_result, 2, self['rand_h_' .. k])
+        self.gradInput[k]:cmul(self['rand_s_' .. k]:repeatTensor(self.batch_size,1))
+        
+        self.gradInput[k] = self.gradInput[k]:permute(1,4,2,3):contiguous()
     end
 
     return self.gradInput

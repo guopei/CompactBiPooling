@@ -136,25 +136,35 @@ end
 
 function ComBiPooling:updateOutput(input)
     
-    self:checkInput(input)
+    -- wrap the input into a table if it's homoe
+    if self.homo then
+        self.input = type(input)=='table' and input or {input}
+    else
+        self.input = input
+    end
+    
+    -- print(#self.input, type(self.input))
+    self:checkInput(self.input)
 
-    if 0 == self.rand_h_1:nElement() then
+    
+    -- only generate new random vector at the very beginning.
+    if 0 == self.rand_h_1:nElement() then 
         if self.homo then
-            self:genRand(input[1]:size(2), input[1]:size(2))
+            self:genRand(self.input[1]:size(2), self.input[1]:size(2))
         else
-            self:genRand(input[1]:size(2), input[2]:size(2))
+            self:genRand(self.input[1]:size(2), self.input[2]:size(2))
         end
     end
     
     -- convert the input from 4D to 2D and expose dimension 2 outside. 
-    self.flat_size = self.flat_size or input[1]:size(1) * input[1]:size(3) * input[1]:size(4)
-    self.flat_input:resize(2, self.flat_size, input[1]:size(2))
-    for i = 1, #input do
-        local new_input       = input[i]:permute(1,3,4,2):contiguous()
-        self.flat_input[i]    = new_input:view(-1, input[i]:size(2))
+    self.flat_size = self.flat_size or self.input[1]:size(1) * self.input[1]:size(3) * self.input[1]:size(4)
+    self.flat_input:resize(2, self.flat_size, self.input[1]:size(2))
+    for i = 1, #self.input do
+        local new_input       = self.input[i]:permute(1,3,4,2):contiguous()
+        self.flat_input[i]    = new_input:view(-1, self.input[i]:size(2))
     end
     
-    if self.homo then self.flat_input[2] = self.flat_input[1]:clone()
+    if self.homo then self.flat_input[2] = self.flat_input[1]:clone() end
     
     -- get hash input as step 2
     self.hash_input:resize(2, self.flat_size, self.output_size)
@@ -162,34 +172,150 @@ function ComBiPooling:updateOutput(input)
     
     -- step 3
     self.flat_output    = self:conv(self.hash_input[1], self.hash_input[2])
-    self.hw_size        = self.hw_size or input[1].size[3] * input[1].size[4]
-    self.batch_size     = self.batch_size or input[1].size[1]
+    self.height         = self.input[1]:size(3)
+    self.width          = self.input[1]:size(4)
+    self.hw_size        = self.hw_size or self.input[1]:size(3) * self.input[1]:size(4)
+    self.batch_size     = self.batch_size or self.input[1]:size(1)
+    self.channel        = self.channel or self.input[1]:size(2)
     -- reshape output and sum pooling over dimension 2 and 3.
     self.output         = self.flat_output:reshape(self.batch_size, self.hw_size, self.output_size)
-    self.output         = self.output:sum(2):squeeze():reshape(input[1]:size(1), self.output_size)
+    self.output         = self.output:sum(2):squeeze():reshape(self.batch_size, self.output_size)
     
+
     return self.output
 end
 
-function ComBiPooling:updateGradInput(input, gradOutput)
 
-    local gradInput     = gradInput or {}
+function ComBiPooling:updateGradInput_1(input, gradOutput)
+    -- input: batch x channel x height x width
+    -- gradOutput: batch x output_size
+    self.gradInput      = self.gradInput or {}
+    self.convResult     = self.convResult or {}
+    -- repeatGradOut: flat_size x output_size
     local repeatGradOut = gradOutput:view(self.batch_size, self.output_size, 1):repeatTensor(1, 1, self.hw_size)
     repeatGradOut       = repeatGradOut:permute(1,3,2):reshape(self.flat_size, self.output_size)
     
-    for k=1,#input do
-        self.gradInput[k] = gradInput[k] or self.flat_input[k].new()
+    -- print(repeatGradOut)
+    
+    for k = 1, 2 do
+        self.gradInput[k]   = self.gradInput[k] or self.flat_input[k].new()
+        -- self.gradInput[k]: flat_size x output_size
         self.gradInput[k]:resizeAs(self.flat_input[k]):zero()
-        local conv_result = conv_result or repeatGradOut.new()
-        conv_result:resizeAs(repeatGradOut)
+        self.convResult[k]  = self.convResult[k] or repeatGradOut.new()
+        -- self.convResult: flat_size x output_size
+        self.convResult[k]:resizeAs(repeatGradOut)
 
-        conv_result = self:conv(repeatGradOut, self.hash_input[3-k])
+        -- self.hash_input: flat_size x output_size
+        local reverse_input = self.hash_input[k]:index(
+                2 ,torch.linspace(self.output_size,1,self.output_size):long())
+        local origin_input  = self.hash_input[k]
         
-        self.gradInput[k]:index(conv_result, 2, self['rand_h_' .. k])
-        self.gradInput[k]:cmul(self['rand_s_' .. k]:repeatTensor(self.batch_size,1))
+        -- print(origin_input[1]:view(1,-1), reverse_input[1]:view(1,-1))
+        -- self.convResult: flat_size x output_size
+        self.convResult[k]  = self:conv(repeatGradOut, reverse_input)
+    end
+    
+    for k = 1, 2 do
         
-        self.gradInput[k] = self.gradInput[k]:permute(1,4,2,3):contiguous()
+        -- self.rand_h_1: 1 x channel, range: [1, output_size]
+        -- self.rand_s_1: 1 x channel, range: {1, -1}
+        -- self.gradInput: flat_size, channel
+        local k_bar = 3-k
+        self.gradInput[k_bar]:index(self.convResult[k], 2, self['rand_h_' .. k_bar])
+        self.gradInput[k_bar]:cmul(self['rand_s_' .. k_bar]:repeatTensor(self.flat_size,1))
+
+        self.gradInput[k_bar] = self.gradInput[k_bar]:view(
+            self.batch_size,self.height,self.width,-1):permute(1,4,2,3):contiguous()
+
     end
 
-    return self.gradInput
+    if type(input)=='table' then 
+        return self.gradInput
+    else
+        return self.gradInput[1] + self.gradInput[2]
+    end
+end
+
+
+function ComBiPooling:updateGradInput(input, gradOutput)
+    
+    -- wrap the input into a table if it's homoe
+    
+    if self.homo then
+        self.input = type(input)=='table' and input or {input}
+    else
+        self.input = input
+    end
+    
+    local batch_size  = self.input[1]:size(1)
+    local output_size = gradOutput:size(2)
+    local channel = self.input[1]:size(2)
+    local height =  self.input[1]:size(3)
+    local width =  self.input[1]:size(4)
+    local hw_size = height * width
+    local flat_size = batch_size * hw_size
+    
+    
+    self.flat_input:resize(2, flat_size, channel)
+    for i = 1, #self.input do
+        local new_input       = self.input[i]:permute(1,3,4,2):contiguous()
+        self.flat_input[i]    = new_input:view(-1, channel)
+    end
+    
+    if self.homo then self.flat_input[2] = self.flat_input[1]:clone() end
+    
+    -- get hash input as step 2
+    self.hash_input:resize(2, self.flat_size, self.output_size)
+    self:getHashInput()
+    
+    -- input: batch x channel x height x width
+    -- gradOutput: batch x output_size
+    local gradInput     = gradInput or {}
+    local convResult     = convResult or {}
+    -- repeatGradOut: flat_size x output_size
+    local repeatGradOut = gradOutput:view(batch_size, output_size, 1):repeatTensor(1, 1, hw_size)
+    repeatGradOut       = repeatGradOut:permute(1,3,2):reshape(flat_size, output_size)
+    
+    -- print(repeatGradOut)
+    
+    self.gradInput = self.gradInput or {}
+    self.convResult     = self.convResult or {}
+    
+    for k = 1, 2 do
+        self.gradInput[k]   = self.gradInput[k] or self.hash_input.new()
+        -- self.gradInput[k]: flat_size x output_size
+        self.gradInput[k]:resizeAs(self.flat_input[k]):zero()
+        self.convResult[k]  = self.convResult[k] or repeatGradOut.new()
+        -- self.convResult: flat_size x output_size
+        self.convResult[k]:resizeAs(repeatGradOut)
+
+        -- self.hash_input: flat_size x output_size
+        local reverse_input = self.hash_input[k]:index(
+                2 ,torch.linspace(self.output_size,1,self.output_size):long())
+        local origin_input  = self.hash_input[k]
+        
+        -- print(origin_input[1]:view(1,-1), reverse_input[1]:view(1,-1))
+        -- self.convResult: flat_size x output_size
+        self.convResult[k]  = self:conv(repeatGradOut, reverse_input)
+    end
+    
+    for k = 1, 2 do
+        
+        -- self.rand_h_1: 1 x channel, range: [1, output_size]
+        -- self.rand_s_1: 1 x channel, range: {1, -1}
+        -- self.gradInput: flat_size, channel
+        local k_bar = 3-k
+        self.gradInput[k_bar]:index(self.convResult[k], 2, self['rand_h_' .. k_bar])
+        self.gradInput[k_bar]:cmul(self['rand_s_' .. k_bar]:repeatTensor(self.flat_size,1))
+
+        self.gradInput[k_bar] = self.gradInput[k_bar]:view(
+            self.batch_size,self.height,self.width,-1):permute(1,4,2,3):contiguous()
+
+    end
+
+    if type(input)=='table' then 
+        return self.gradInput
+    else
+        return self.gradInput[1] + self.gradInput[2]
+    end
 end

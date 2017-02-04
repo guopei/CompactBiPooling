@@ -6,9 +6,10 @@ local ComBiPooling, parent = torch.class('nn.ComBiPooling', 'nn.Module')
 function ComBiPooling:__init(output_size, homo)
     assert(output_size and output_size >= 1, 'missing outputSize...')
     self.output_size = output_size
+    -- add option for one input
+    -- mainly for testJacobian.
     self.homo        = homo or false
     self:initVar()
-    
 end
 
 function ComBiPooling:initVar()
@@ -21,7 +22,6 @@ function ComBiPooling:initVar()
 end
 
 -- generate random vectors h1, h2, s1, s2.
--- according to "Algorithm 2 Tensor Sketch Projection" step 1.
 function ComBiPooling:genRand(size_1, size_2)
     cutorch.manualSeed(0)
     self.rand_h_1 = self.rand_h_1:resize(size_1):uniform(0,self.output_size):ceil():long()
@@ -138,17 +138,17 @@ end
 
 function ComBiPooling:updateOutput(input)
     
-    -- wrap the input into a table if it's homoe
+    -- wrap the input into a table if it's homo
     if self.homo then
         self.input = type(input)=='table' and input or {input}
     else
         self.input = input
     end
-    
-    -- print(#self.input, type(self.input))
+
     self:checkInput(self.input)
 
-    
+    -- step 1. See Compact Bilinear Pooling paper 
+    -- "Algorithm 2 Tensor Sketch Projection".
     -- only generate new random vector at the very beginning.
     if 0 == self.rand_h_1:nElement() then 
         if self.homo then
@@ -172,13 +172,14 @@ function ComBiPooling:updateOutput(input)
     self.hash_input:resize(2, self.flat_size, self.output_size)
     self:getHashInput()
     
-    -- step 3
+    -- generate several constant values for later user
     self.flat_output    = self:conv(self.hash_input[1], self.hash_input[2])
     self.height         = self.input[1]:size(3)
     self.width          = self.input[1]:size(4)
     self.hw_size        = self.hw_size or self.input[1]:size(3) * self.input[1]:size(4)
     self.batch_size     = self.batch_size or self.input[1]:size(1)
     self.channel        = self.channel or self.input[1]:size(2)
+    -- step 3
     -- reshape output and sum pooling over dimension 2 and 3.
     self.output         = self.flat_output:reshape(self.batch_size, self.hw_size, self.output_size)
     self.output         = self.output:sum(2):squeeze():reshape(self.batch_size, self.output_size)
@@ -196,8 +197,6 @@ function ComBiPooling:updateGradInput(input, gradOutput)
     -- repeatGradOut: flat_size x output_size
     local repeatGradOut = gradOutput:view(self.batch_size, self.output_size, 1):repeatTensor(1, 1, self.hw_size)
     repeatGradOut       = repeatGradOut:permute(1,3,2):reshape(self.flat_size, self.output_size)
-    
-    
     
     self.gradInput = self.gradInput or {}
     self.convResult     = self.convResult or {}
@@ -219,7 +218,6 @@ function ComBiPooling:updateGradInput(input, gradOutput)
         
         -- self.convResult: flat_size x output_size
         self.convResult[k]  = self:conv(repeatGradOut, reverse_input)
-        
     end
     
     for k = 1, 2 do
@@ -233,7 +231,6 @@ function ComBiPooling:updateGradInput(input, gradOutput)
 
         self.gradInput[k_bar] = self.gradInput[k_bar]:view(
             self.batch_size,self.height,self.width,-1):permute(1,4,2,3):contiguous()
-
     end
 
     if type(input)=='table' then 

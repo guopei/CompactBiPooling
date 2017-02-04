@@ -8,6 +8,7 @@ function ComBiPooling:__init(output_size, homo)
     self.output_size = output_size
     self.homo        = homo or false
     self:initVar()
+    
 end
 
 function ComBiPooling:initVar()
@@ -22,6 +23,7 @@ end
 -- generate random vectors h1, h2, s1, s2.
 -- according to "Algorithm 2 Tensor Sketch Projection" step 1.
 function ComBiPooling:genRand(size_1, size_2)
+    cutorch.manualSeed(0)
     self.rand_h_1 = self.rand_h_1:resize(size_1):uniform(0,self.output_size):ceil():long()
     self.rand_h_2 = self.rand_h_2:resize(size_2):uniform(0,self.output_size):ceil():long()
     self.rand_s_1 = self.rand_s_1:resize(size_1):uniform(0,2):floor():mul(2):add(-1)
@@ -181,102 +183,21 @@ function ComBiPooling:updateOutput(input)
     self.output         = self.flat_output:reshape(self.batch_size, self.hw_size, self.output_size)
     self.output         = self.output:sum(2):squeeze():reshape(self.batch_size, self.output_size)
     
-
     return self.output
 end
 
 
-function ComBiPooling:updateGradInput_1(input, gradOutput)
-    -- input: batch x channel x height x width
-    -- gradOutput: batch x output_size
-    self.gradInput      = self.gradInput or {}
-    self.convResult     = self.convResult or {}
-    -- repeatGradOut: flat_size x output_size
-    local repeatGradOut = gradOutput:view(self.batch_size, self.output_size, 1):repeatTensor(1, 1, self.hw_size)
-    repeatGradOut       = repeatGradOut:permute(1,3,2):reshape(self.flat_size, self.output_size)
-    
-    -- print(repeatGradOut)
-    
-    for k = 1, 2 do
-        self.gradInput[k]   = self.gradInput[k] or self.flat_input[k].new()
-        -- self.gradInput[k]: flat_size x output_size
-        self.gradInput[k]:resizeAs(self.flat_input[k]):zero()
-        self.convResult[k]  = self.convResult[k] or repeatGradOut.new()
-        -- self.convResult: flat_size x output_size
-        self.convResult[k]:resizeAs(repeatGradOut)
-
-        -- self.hash_input: flat_size x output_size
-        local reverse_input = self.hash_input[k]:index(
-                2 ,torch.linspace(self.output_size,1,self.output_size):long())
-        local origin_input  = self.hash_input[k]
-        
-        -- print(origin_input[1]:view(1,-1), reverse_input[1]:view(1,-1))
-        -- self.convResult: flat_size x output_size
-        self.convResult[k]  = self:conv(repeatGradOut, reverse_input)
-    end
-    
-    for k = 1, 2 do
-        
-        -- self.rand_h_1: 1 x channel, range: [1, output_size]
-        -- self.rand_s_1: 1 x channel, range: {1, -1}
-        -- self.gradInput: flat_size, channel
-        local k_bar = 3-k
-        self.gradInput[k_bar]:index(self.convResult[k], 2, self['rand_h_' .. k_bar])
-        self.gradInput[k_bar]:cmul(self['rand_s_' .. k_bar]:repeatTensor(self.flat_size,1))
-
-        self.gradInput[k_bar] = self.gradInput[k_bar]:view(
-            self.batch_size,self.height,self.width,-1):permute(1,4,2,3):contiguous()
-
-    end
-
-    if type(input)=='table' then 
-        return self.gradInput
-    else
-        return self.gradInput[1] + self.gradInput[2]
-    end
-end
-
-
 function ComBiPooling:updateGradInput(input, gradOutput)
-    
-    -- wrap the input into a table if it's homoe
-    
-    if self.homo then
-        self.input = type(input)=='table' and input or {input}
-    else
-        self.input = input
-    end
-    
-    local batch_size  = self.input[1]:size(1)
-    local output_size = gradOutput:size(2)
-    local channel = self.input[1]:size(2)
-    local height =  self.input[1]:size(3)
-    local width =  self.input[1]:size(4)
-    local hw_size = height * width
-    local flat_size = batch_size * hw_size
-    
-    
-    self.flat_input:resize(2, flat_size, channel)
-    for i = 1, #self.input do
-        local new_input       = self.input[i]:permute(1,3,4,2):contiguous()
-        self.flat_input[i]    = new_input:view(-1, channel)
-    end
-    
-    if self.homo then self.flat_input[2] = self.flat_input[1]:clone() end
-    
-    -- get hash input as step 2
-    self.hash_input:resize(2, self.flat_size, self.output_size)
-    self:getHashInput()
-    
+ 
     -- input: batch x channel x height x width
     -- gradOutput: batch x output_size
     local gradInput     = gradInput or {}
     local convResult     = convResult or {}
     -- repeatGradOut: flat_size x output_size
-    local repeatGradOut = gradOutput:view(batch_size, output_size, 1):repeatTensor(1, 1, hw_size)
-    repeatGradOut       = repeatGradOut:permute(1,3,2):reshape(flat_size, output_size)
+    local repeatGradOut = gradOutput:view(self.batch_size, self.output_size, 1):repeatTensor(1, 1, self.hw_size)
+    repeatGradOut       = repeatGradOut:permute(1,3,2):reshape(self.flat_size, self.output_size)
     
-    -- print(repeatGradOut)
+    
     
     self.gradInput = self.gradInput or {}
     self.convResult     = self.convResult or {}
@@ -289,14 +210,16 @@ function ComBiPooling:updateGradInput(input, gradOutput)
         -- self.convResult: flat_size x output_size
         self.convResult[k]:resizeAs(repeatGradOut)
 
+        local index = torch.cat(torch.LongTensor{1}, 
+            torch.linspace(self.output_size,2,self.output_size-1):long())
+        
         -- self.hash_input: flat_size x output_size
         local reverse_input = self.hash_input[k]:index(
-                2 ,torch.linspace(self.output_size,1,self.output_size):long())
-        local origin_input  = self.hash_input[k]
+                2 ,index)
         
-        -- print(origin_input[1]:view(1,-1), reverse_input[1]:view(1,-1))
         -- self.convResult: flat_size x output_size
         self.convResult[k]  = self:conv(repeatGradOut, reverse_input)
+        
     end
     
     for k = 1, 2 do

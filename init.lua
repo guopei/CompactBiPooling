@@ -1,7 +1,6 @@
 require 'nn'
 require 'libcudafft'
 
--- create global rnn table:
 tcbp = {}
 tcbp.version = 1.0-1
 

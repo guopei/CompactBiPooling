@@ -1,4 +1,4 @@
-# Compact bilinear pooling for Torch
+# Compact Bilinear Pooling for Torch 
 
 This code is revised from [@jnhwkim's](https://github.com/jnhwkim) [Multimodal Compact Bilinear Pooling for Torch7](https://github.com/jnhwkim/cbp). The main changes include:
 
@@ -21,7 +21,7 @@ luarocks make rocks/tcbp-scm-1.rockspec
 ```
 th test.lua
 ```
-**test.lua** is also a good starting point.
+Read test.lua for usage.
 
 ## References
 1. lib-spectral

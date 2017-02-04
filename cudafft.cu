@@ -2,6 +2,8 @@
 #include "THC/THC.h"
 #include <cufft.h>
 
+// extract fft(real to complex) and ifft(complex to real) from lib-spectral code 
+// and register them to a new lib.
 
 static int fft1d_r2c(lua_State *L) {
     THCudaTensor *input = (THCudaTensor *)luaT_checkudata(L, 1, "torch.CudaTensor");

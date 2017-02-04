@@ -8,7 +8,6 @@ function SignedSquareRoot:__init(args)
 end
 
 function SignedSquareRoot:updateOutput(input)
-    
     self.output = self.module:forward(input)
     -- get sign for each input element
     self.sign = self.sign or input.new()

@@ -81,21 +81,3 @@ LUA_EXTERNC int luaopen_libcudafft(lua_State *L) {
     lua_pop(L,1);
     return 1;
 }
-
-/*
-static void cudafft_init(lua_State *L)
-{
-  luaT_pushmetatable(L, "torch.CudaTensor");
-  luaT_registeratname(L, cudafft__, "cudafft");
-  lua_pop(L,1);
-}
-
-LUA_EXTERNC DLL_EXPORT int luaopen_libcudafft(lua_State *L);
-
-int luaopen_libcudafft(lua_State *L)
-{
-  lua_newtable(L);
-  cudafft_init(L);
-  return 1;
-}
-*/

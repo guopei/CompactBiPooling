@@ -30,6 +30,7 @@ function ComBiPooling:genRand(size_1, size_2)
     self.rand_s_2 = self.rand_s_2:resize(size_2):uniform(0,2):floor():mul(2):add(-1)
 end
 
+-- psi function in Algorithm 2.
 function ComBiPooling:getHashInput()
     self.hash_input:zero()
     self.hash_input[1]:indexAdd(2,self.rand_h_1,
@@ -62,6 +63,7 @@ function ComBiPooling:checkInput(input)
     end
 end
 
+-- complex number element wise product
 function ComBiPooling:fftMul(x, y)
     local prod = torch.zeros(x:size()):cuda()
     
@@ -80,6 +82,7 @@ function ComBiPooling:fftMul(x, y)
     return prod
 end
 
+-- batch fft
 function ComBiPooling:fft1d(input, output)
     local nSamples = input:size(1)
     local nPlanes = input:size(2)
@@ -93,6 +96,7 @@ function ComBiPooling:fft1d(input, output)
     output:resize(nSamples, nPlanes, N, M/2+1, 2)
 end
 
+-- batch ifft
 function ComBiPooling:ifft1d(input, output)
     local nSamples = output:size(1)
     local nPlanes = output:size(2)
@@ -107,6 +111,7 @@ function ComBiPooling:ifft1d(input, output)
     output:resize(nSamples, nPlanes, N, M)
 end
 
+-- ifft( fft(x) .* fft(y) )
 function ComBiPooling:conv(x,y)
     local batchSize = x:size(1)
     local dim = x:size(2)
@@ -201,6 +206,7 @@ function ComBiPooling:updateGradInput(input, gradOutput)
     self.gradInput = self.gradInput or {}
     self.convResult     = self.convResult or {}
     
+    -- this part is derivative of ifft(fft().*fft())
     for k = 1, 2 do
         self.gradInput[k]   = self.gradInput[k] or self.hash_input.new()
         -- self.gradInput[k]: flat_size x output_size
@@ -220,6 +226,7 @@ function ComBiPooling:updateGradInput(input, gradOutput)
         self.convResult[k]  = self:conv(repeatGradOut, reverse_input)
     end
     
+    -- this part is derivative of psi function
     for k = 1, 2 do
         
         -- self.rand_h_1: 1 x channel, range: [1, output_size]

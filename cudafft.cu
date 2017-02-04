@@ -2,7 +2,7 @@
 #include "THC/THC.h"
 #include <cufft.h>
 
-// extract fft(real to complex) and ifft(complex to real) from lib-spectral code 
+// extract fft(real to complex) and ifft(complex to real) from spectral-lib code 
 // and register them to a new lib.
 
 static int fft1d_r2c(lua_State *L) {

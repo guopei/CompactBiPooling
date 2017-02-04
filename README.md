@@ -9,15 +9,19 @@ This code is revised from [@jnhwkim's](https://github.com/jnhwkim) [Multimodal C
 
 The compact bilinear pooling layer is proposed by Yang Gao etc. in the paper [Compact Bilinear Pooling](https://arxiv.org/abs/1511.06062). This method reduces the spatial complexity of [Bilinear Pooling](http://vis-www.cs.umass.edu/bcnn/docs/bcnn_iccv15.pdf) so that it's feasible for real world training and provides a possible direction to interpret the huge success in fine grained recognition using Bilibear Pooling. We refer you to [caffe implementation page](https://github.com/gy20073/compact_bilinear_pooling) for further information.
 
-For usage, please read **test.lua**
-
 ## Installation
 
 ```
 git clone https://github.com/guopei/CompactBiPooling
 cd CompactBiPooling
-luarocks make rocks/cbp-scm-1.rockspec
+luarocks make rocks/tcbp-scm-1.rockspec
 ```
+
+## Test
+```
+th test.lua
+```
+**test.lua** is also a good starting point.
 
 ## References
 1. lib-spectral

@@ -30,7 +30,6 @@ SET_TARGET_PROPERTIES(cudafft PROPERTIES
   PREFIX "lib"
   IMPORT_PREFIX "lib")
 
-
 SET(src)
 FILE(GLOB luasrc *.lua)
 SET(luasrc ${luasrc} test/test.lua)

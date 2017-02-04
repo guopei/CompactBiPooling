@@ -115,9 +115,24 @@ function mytest.test_backward()
     end
 
     -- jacobian test error
-    local err = nn.Jacobian.testJacobian(cbp, input, minval, maxval, perturbation)
+    local err = jac.testJacobian(cbp, input, minval, maxval, perturbation)
     tester:assertlt(err , precision, 'jacobian test fails')
 end
+
+function mytest.test_signed_square_root()
+    local input  = torch.Tensor({4, 9, -16, -25, 0})
+    local target = torch.Tensor({2, 3, -4, -5, 0})
     
+    local precision = 1e-5
+    
+    local ssr = nn.SignedSquareRoot()
+    local output = ssr:forward(input)
+    tester:eq(output, target, 'SignedSquareRoot layer forward function wrong')
+    
+    local jac = nn.Jacobian
+    local err = jac.testJacobian(ssr, input)
+    tester:assertlt(err, precision, 'SignedSquareRoot layer gradient checking fail')
+end
+
 tester:add(mytest)
 tester:run()

@@ -9,7 +9,7 @@ source = {
 description = {
    summary = "Compact Bilinear Pooling for Torch7 nn",
    detailed = [[
-Torch7 Implementation of Compact Bilnear Pooling
+   Torch7 Implementation of Compact Bilnear Pooling for image input.
    ]],
    homepage = "https://github.com/guopei/CompactBiPooling",
    license = "BSD-3 Clause"
@@ -23,10 +23,10 @@ dependencies = {
 build = {
    type = "command",
    build_command = [[
-cmake -E make_directory build;
-cd build;
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(LUA_BINDIR)/.." -DCMAKE_INSTALL_PREFIX="$(PREFIX)"; 
-$(MAKE)
+   cmake -E make_directory build;
+   cd build;
+   cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(LUA_BINDIR)/.." -DCMAKE_INSTALL_PREFIX="$(PREFIX)"; 
+   $(MAKE)
    ]],
    install_command = "cd build && $(MAKE) install"
 }

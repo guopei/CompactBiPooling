@@ -4,8 +4,6 @@ require 'libcudafft'
 tcbp = {}
 tcbp.version = 1.0-1
 
-unpack = unpack or table.unpack
-
 -- support modules
 torch.include('tcbp', 'CompactBiPooling.lua')
 torch.include('tcbp', 'SignedSquareRoot.lua')

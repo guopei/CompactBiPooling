@@ -12,8 +12,8 @@ The compact bilinear pooling layer is proposed by Yang Gao etc. in the paper [Co
 ## Installation
 
 ```
-git clone https://github.com/guopei/CompactBiPooling
-cd CompactBiPooling
+git clone https://github.com/guopei/CompactBiPooling cbp
+cd cbp
 luarocks make rocks/tcbp-scm-1.rockspec
 ```
 
@@ -24,7 +24,7 @@ th test.lua
 Read test.lua for usage.
 
 ## References
-1. lib-spectral
-2. cbp
-3. compact_bilinear_pooling
-4. tensorflow_compact_bilinear_pooling
+1. [spectral-lib](https://github.com/mbhenaff/spectral-lib)
+2. [cbp](https://github.com/jnhwkim/cbp)
+3. [compact_bilinear_pooling](https://github.com/gy20073/compact_bilinear_pooling)
+4. [tensorflow_compact_bilinear_pooling](https://github.com/ronghanghu/tensorflow_compact_bilinear_pooling)

@@ -3,7 +3,7 @@
 This code is revised from [@jnhwkim's](https://github.com/jnhwkim) [Multimodal Compact Bilinear Pooling for Torch7](https://github.com/jnhwkim/cbp). The main changes include:
 
 1. adapt the code with image inputs(4D tensor).
-2. get rid of lib-spectral dependency.
+2. get rid of spectral-lib dependency.
 3. the new package name is **tcbp**(Torch Compact Bilinear Pooling) to avoid confusion.
 4. new tests.
 

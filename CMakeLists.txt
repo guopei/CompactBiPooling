@@ -32,7 +32,7 @@ SET_TARGET_PROPERTIES(cudafft PROPERTIES
 
 SET(src)
 FILE(GLOB luasrc *.lua)
-SET(luasrc ${luasrc} test/test.lua)
+SET(luasrc ${luasrc} test.lua)
 ADD_TORCH_PACKAGE(tcbp "${src}" "${luasrc}"  "Compact Bilinear Pooling")
 
 INSTALL(TARGETS cudafft

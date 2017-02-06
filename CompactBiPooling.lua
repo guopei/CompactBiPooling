@@ -164,7 +164,7 @@ function ComBiPooling:updateOutput(input)
     end
     
     -- convert the input from 4D to 2D and expose dimension 2 outside. 
-    self.flat_size = self.flat_size or self.input[1]:size(1) * self.input[1]:size(3) * self.input[1]:size(4)
+    self.flat_size = self.input[1]:size(1) * self.input[1]:size(3) * self.input[1]:size(4)
     self.flat_input:resize(2, self.flat_size, self.input[1]:size(2))
     for i = 1, #self.input do
         local new_input       = self.input[i]:permute(1,3,4,2):contiguous()
@@ -181,9 +181,9 @@ function ComBiPooling:updateOutput(input)
     self.flat_output    = self:conv(self.hash_input[1], self.hash_input[2])
     self.height         = self.input[1]:size(3)
     self.width          = self.input[1]:size(4)
-    self.hw_size        = self.hw_size or self.input[1]:size(3) * self.input[1]:size(4)
-    self.batch_size     = self.batch_size or self.input[1]:size(1)
-    self.channel        = self.channel or self.input[1]:size(2)
+    self.hw_size        = self.input[1]:size(3) * self.input[1]:size(4)
+    self.batch_size     = self.input[1]:size(1)
+    self.channel        = self.input[1]:size(2)
     -- step 3
     -- reshape output and sum pooling over dimension 2 and 3.
     self.output         = self.flat_output:reshape(self.batch_size, self.hw_size, self.output_size)
@@ -196,21 +196,19 @@ end
 function ComBiPooling:updateGradInput(input, gradOutput)
  
     -- input: batch x channel x height x width
-    -- gradOutput: batch x output_size
-    local gradInput     = gradInput or {}
-    local convResult     = convResult or {}
+    -- gradOutput: batch x 
     -- repeatGradOut: flat_size x output_size
     local repeatGradOut = gradOutput:view(self.batch_size, self.output_size, 1):repeatTensor(1, 1, self.hw_size)
     repeatGradOut       = repeatGradOut:permute(1,3,2):reshape(self.flat_size, self.output_size)
     
-    self.gradInput = self.gradInput or {}
+    self.gradInputTable = self.gradInputTable or {}
     self.convResult     = self.convResult or {}
     
     -- this part is derivative of ifft(fft().*fft())
     for k = 1, 2 do
-        self.gradInput[k]   = self.gradInput[k] or self.hash_input.new()
-        -- self.gradInput[k]: flat_size x output_size
-        self.gradInput[k]:resizeAs(self.flat_input[k]):zero()
+        self.gradInputTable[k]   = self.gradInputTable[k] or self.hash_input.new()
+        -- self.gradInputTable[k]: flat_size x output_size
+        self.gradInputTable[k]:resizeAs(self.flat_input[k]):zero()
         self.convResult[k]  = self.convResult[k] or repeatGradOut.new()
         -- self.convResult: flat_size x output_size
         self.convResult[k]:resizeAs(repeatGradOut)
@@ -231,18 +229,20 @@ function ComBiPooling:updateGradInput(input, gradOutput)
         
         -- self.rand_h_1: 1 x channel, range: [1, output_size]
         -- self.rand_s_1: 1 x channel, range: {1, -1}
-        -- self.gradInput: flat_size, channel
+        -- self.gradInputTable[k]: flat_size, channel
         local k_bar = 3-k
-        self.gradInput[k_bar]:index(self.convResult[k], 2, self['rand_h_' .. k_bar])
-        self.gradInput[k_bar]:cmul(self['rand_s_' .. k_bar]:repeatTensor(self.flat_size,1))
+        self.gradInputTable[k_bar]:index(self.convResult[k], 2, self['rand_h_' .. k_bar])
+        self.gradInputTable[k_bar]:cmul(self['rand_s_' .. k_bar]:repeatTensor(self.flat_size,1))
 
-        self.gradInput[k_bar] = self.gradInput[k_bar]:view(
+        self.gradInputTable[k_bar] = self.gradInputTable[k_bar]:view(
             self.batch_size,self.height,self.width,-1):permute(1,4,2,3):contiguous()
     end
-
+    
     if type(input)=='table' then 
+        self.gradInput = self.gradInputTable
         return self.gradInput
     else
-        return self.gradInput[1] + self.gradInput[2]
+        self.gradInput = self.gradInputTable[1] + self.gradInputTable[2]
+        return self.gradInput
     end
 end

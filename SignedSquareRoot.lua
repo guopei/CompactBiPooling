@@ -19,7 +19,7 @@ function SignedSquareRoot:updateOutput(input)
 end
 
 function SignedSquareRoot:updateGradInput(input, gradOutput)
-    local eps = 1e-11  -- to avoid gradient explosion
+    local eps = 1e-5  -- to avoid gradient explosion
     torch.cmul(self.gradInput, gradOutput, 
         torch.pow(self.module:forward(input)+eps,-1)/2)
     

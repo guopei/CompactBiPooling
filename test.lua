@@ -123,7 +123,7 @@ function mytest.test_signed_square_root()
     local input  = torch.Tensor({4, 9, -16, -25, 0})
     local target = torch.Tensor({2, 3, -4, -5, 0})
     
-    local precision = 1e-5
+    local precision = 1e-2
     
     local ssr = nn.SignedSquareRoot()
     local output = ssr:forward(input)
@@ -132,6 +132,22 @@ function mytest.test_signed_square_root()
     local jac = nn.Jacobian
     local err = jac.testJacobian(ssr, input)
     tester:assertlt(err, precision, 'SignedSquareRoot layer gradient checking fail')
+end
+
+function mytest.test_l2_norm()
+    local input  = torch.Tensor({{3, 4}, {12, 5}})
+    local target = torch.Tensor({{3/5, 4/5}, {12/13, 5/13}})
+    
+    local precision = 1e-2
+    
+    local l2n = nn.L2Norm()
+    local output = l2n:forward(input)
+
+    tester:eq(output, target, precision, 'L2Norm layer forward function wrong')
+    
+    local jac = nn.Jacobian
+    local err = jac.testJacobian(l2n, input)
+    tester:assertlt(err, precision, 'L2Norm layer gradient checking fail')
 end
 
 tester:add(mytest)

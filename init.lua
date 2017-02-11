@@ -5,9 +5,8 @@ tcbp = {}
 tcbp.version = 1.0-1
 
 -- support modules
-torch.include('tcbp', 'CompactBiPooling.lua')
-torch.include('tcbp', 'SignedSquareRoot.lua')
-torch.include('tcbp', 'L2Normalization.lua')
+torch.include('tcbp', 'cbp.lua')
+torch.include('tcbp', 'ssr.lua')
 
 -- prevent likely name conflicts
 nn.tcbp = tcbp

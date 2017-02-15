@@ -23,7 +23,6 @@ end
 
 -- generate random vectors h1, h2, s1, s2.
 function ComBiPooling:genRand(size_1, size_2)
-    cutorch.manualSeed(0)
     self.rand_h_1 = self.rand_h_1:resize(size_1):uniform(0,self.output_size):ceil():long()
     self.rand_h_2 = self.rand_h_2:resize(size_2):uniform(0,self.output_size):ceil():long()
     self.rand_s_1 = self.rand_s_1:resize(size_1):uniform(0,2):floor():mul(2):add(-1)

@@ -23,7 +23,7 @@ SET(luasrc init.lua)
 add_definitions( -DTORCH_BUILD )
 
 CUDA_ADD_LIBRARY(cudafft MODULE ${src-cuda})
-TARGET_LINK_LIBRARIES(cudafft THC TH cuda cufft)
+TARGET_LINK_LIBRARIES(cudafft THC TH ${CUDA_LIBRARIES})
 
 ### Torch packages supposes libraries prefix is "lib"
 SET_TARGET_PROPERTIES(cudafft PROPERTIES

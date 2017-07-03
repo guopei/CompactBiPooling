@@ -18,10 +18,27 @@ luarocks make rocks/tcbp-1.0-1.rockspec
 ```
 
 ## Test
+
 ```
 th test.lua
 ```
 Read test.lua for usage.
+
+## Troubleshooting
+
+If the following error occurs
+```
+ld -lcufft not found
+```
+then it's because the `ld` cannot find the `cufft` library.
+Note that even if you have already set the `LD_LIBRARY_PATH`. 
+Because `LD_LIBRARY_PATH` is only used at excution time not complation time.
+The solution is just adding a soft link of `libcufft.so` to your system library path:
+```
+sudo ln -s /user/local/cuda/lib64/libcufft.so /user/lib
+``` 
+Change the location of libcufft.so according to where its' located in your machine.
+
 
 ## References
 1. [spectral-lib](https://github.com/mbhenaff/spectral-lib)

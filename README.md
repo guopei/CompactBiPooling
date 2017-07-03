@@ -31,7 +31,7 @@ If the following error occurs:
 ld -lcufft not found
 ```
 This is because the `ld` cannot find the `cufft` library even if you have already set the `LD_LIBRARY_PATH`. 
-Because `LD_LIBRARY_PATH` is only used at excution time not complation time.
+Because `LD_LIBRARY_PATH` is only used at excution time not compilation time.
 The solution is just adding a soft link of `libcufft.so` to your system library path:
 ```
 sudo ln -s /user/local/cuda/lib64/libcufft.so /user/lib

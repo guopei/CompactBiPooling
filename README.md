@@ -26,18 +26,17 @@ Read test.lua for usage.
 
 ## Troubleshooting
 
-If the following error occurs
+If the following error occurs:
 ```
 ld -lcufft not found
 ```
-then it's because the `ld` cannot find the `cufft` library.
-Note that even if you have already set the `LD_LIBRARY_PATH`. 
+This is because the `ld` cannot find the `cufft` library even if you have already set the `LD_LIBRARY_PATH`. 
 Because `LD_LIBRARY_PATH` is only used at excution time not complation time.
 The solution is just adding a soft link of `libcufft.so` to your system library path:
 ```
 sudo ln -s /user/local/cuda/lib64/libcufft.so /user/lib
 ``` 
-Change the location of libcufft.so according to where its' located in your machine.
+Change the location of `libcufft.so` according to where its' located in your machine.
 
 
 ## References

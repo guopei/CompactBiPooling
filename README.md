@@ -38,6 +38,9 @@ sudo ln -s /user/local/cuda/lib64/libcufft.so /user/lib
 ``` 
 Change the location of `libcufft.so` according to where its' located in your machine.
 
+## Update
+
+1. Added code to be compatible with both lua51 and lua52.
 
 ## References
 1. [spectral-lib](https://github.com/mbhenaff/spectral-lib)

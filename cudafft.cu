@@ -72,14 +72,29 @@ static int fft1d_c2r(lua_State *L) {
 	return 0;	
 }
 
-static const struct luaL_reg cudafft_init [] = {
+static const struct luaL_Reg cudafft_init [] = {
     {"fft1d_r2c", fft1d_r2c},
     {"fft1d_c2r", fft1d_c2r},
     {NULL, NULL}
 };
 
 LUA_EXTERNC int luaopen_libcudafft(lua_State *L) {
+    // 501 corresponds to lua51
+#if LUA_VERSION_NUM == 501
     luaL_openlib(L, "cudafft", cudafft_init, 0);
     lua_pop(L,1);
     return 1;
+    // in lua52 libL_openlib is removed,
+    // so we use the following routine to register new library.
+    // lua53 is not tested but torch does not support lua53 yet.
+#else
+    lua_getglobal(L, "cudafft");
+    if (lua_isnil(L, -1)) {
+        lua_pop(L, 1);
+        lua_newtable(L);
+    }
+    luaL_setfuncs(L, cudafft_init, 0);
+    lua_setglobal(L, "cudafft");
+    return 1;
+#endif
 }
